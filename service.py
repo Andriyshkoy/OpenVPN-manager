@@ -68,7 +68,6 @@ def _run_easy_rsa(args: List[str]) -> None:
                 env=env
             )
 
-            # Send "yes" to any prompt
             stdout, stderr = process.communicate(input="yes\n")
 
             if process.returncode != 0:
@@ -78,12 +77,10 @@ def _run_easy_rsa(args: List[str]) -> None:
                 logger.error(f"STDERR: {stderr}")
                 raise subprocess.CalledProcessError(process.returncode, cmd)
 
-            # Log output for debugging
             logger.debug(stdout)
             if stderr:
                 logger.debug(f"STDERR: {stderr}")
         else:
-            # For commands that don't need confirmation
             result = subprocess.run(
                 cmd,
                 cwd=EASYRSA_PATH,
@@ -166,12 +163,11 @@ def revoke_client(name: str) -> None:
 # ---- suspend logic ---------------------------------------------------------
 
 
-def suspend_client(name: str) -> None:
+def suspend_client(name: str) -> int:
     BLOCKLIST_PATH.touch(exist_ok=True)
     lines = BLOCKLIST_PATH.read_text().splitlines()
     if name in lines:
         logger.info(f"Client {name} already suspended")
-        return
     BLOCKLIST_PATH.write_text("\n".join(lines + [name]) + "\n")
     logger.info(f"Client {name} suspended (added to block-list)")
 

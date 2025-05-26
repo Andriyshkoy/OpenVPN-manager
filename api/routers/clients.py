@@ -1,64 +1,25 @@
-#!/usr/bin/env python3
 """
-FastAPI interface for OpenVPN client management
+Client management routes
 """
-import os
-import uvicorn
-from fastapi import FastAPI, HTTPException, Depends, Security, status
-from fastapi.security import APIKeyHeader
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from typing import List, Optional
+
 import service
+from api.dependencies import get_api_key
+from api.schemas.client import (BlockedClientsResponse, ClientRequest,
+                                ClientResponse)
 
 logger = service.logger
 
-# Initialize FastAPI
-app = FastAPI(
-    title="OpenVPN Client Manager API",
-    description="API for managing OpenVPN clients",
-    version="1.0.0"
+router = APIRouter(
+    prefix="/clients",
+    tags=["clients"],
+    dependencies=[Depends(get_api_key)]
 )
 
-# Security - API key authentication
-API_KEY = os.environ.get("OVPN_API_KEY", "")
-api_key_header = APIKeyHeader(name="X-API-Key")
 
-
-def get_api_key(api_key: str = Security(api_key_header)):
-    if not API_KEY:
-        # Skip authentication (DEVELOPMENT ONLY!)
-        logger.warning("No API_KEY set - running without authentication")
-        return api_key
-    if api_key != API_KEY:
-        logger.warning("Invalid API key attempt")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API Key"
-        )
-    return api_key
-
-# Models
-
-
-class ClientRequest(BaseModel):
-    name: str
-    use_password: bool = False
-
-
-class ClientResponse(BaseModel):
-    name: str
-    message: str
-    config_path: Optional[str] = None
-
-
-class BlockedClientsResponse(BaseModel):
-    blocked_clients: List[str]
-
-
-# Routes
-@app.post("/clients", response_model=ClientResponse)
-def create_client(client: ClientRequest, api_key: str = Depends(get_api_key)):
+@router.post("", response_model=ClientResponse)
+def create_client(client: ClientRequest):
     """Generate a new OpenVPN client configuration"""
     logger.info(f"API request: create client {client.name}")
     try:
@@ -73,8 +34,8 @@ def create_client(client: ClientRequest, api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/clients/{name}/config")
-def download_client_config(name: str, api_key: str = Depends(get_api_key)):
+@router.get("/{name}/config")
+def download_client_config(name: str):
     """Download a client's .ovpn configuration file"""
     logger.info(f"API request: download config for {name}")
     config_path = service.OUTPUT_DIR / f"{name}.ovpn"
@@ -89,8 +50,8 @@ def download_client_config(name: str, api_key: str = Depends(get_api_key)):
     )
 
 
-@app.delete("/clients/{name}", response_model=ClientResponse)
-def revoke_client(name: str, api_key: str = Depends(get_api_key)):
+@router.delete("/{name}", response_model=ClientResponse)
+def revoke_client(name: str):
     """Revoke a client certificate"""
     logger.info(f"API request: revoke client {name}")
     try:
@@ -104,8 +65,8 @@ def revoke_client(name: str, api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/clients/{name}/suspend", response_model=ClientResponse)
-def suspend_client(name: str, api_key: str = Depends(get_api_key)):
+@router.post("/{name}/suspend", response_model=ClientResponse)
+def suspend_client(name: str):
     """Temporarily suspend a client"""
     logger.info(f"API request: suspend client {name}")
     try:
@@ -119,8 +80,8 @@ def suspend_client(name: str, api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/clients/{name}/unsuspend", response_model=ClientResponse)
-def unsuspend_client(name: str, api_key: str = Depends(get_api_key)):
+@router.post("/{name}/unsuspend", response_model=ClientResponse)
+def unsuspend_client(name: str):
     """Unsuspend a client"""
     logger.info(f"API request: unsuspend client {name}")
     try:
@@ -134,8 +95,8 @@ def unsuspend_client(name: str, api_key: str = Depends(get_api_key)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/clients/blocked", response_model=BlockedClientsResponse)
-def list_blocked_clients(api_key: str = Depends(get_api_key)):
+@router.get("/blocked", response_model=BlockedClientsResponse)
+def list_blocked_clients():
     """List all blocked clients"""
     logger.info("API request: list blocked clients")
     try:
@@ -147,11 +108,3 @@ def list_blocked_clients(api_key: str = Depends(get_api_key)):
     except Exception as e:
         logger.error(f"Failed to list blocked clients: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-if __name__ == "__main__":
-    # Run the API server when executed directly
-    port = int(os.environ.get("OVPN_API_PORT", 8000))
-    host = os.environ.get("OVPN_API_HOST", "127.0.0.1")
-    logger.info(f"Starting API server on {host}:{port}")
-    uvicorn.run(app, host=host, port=port)
