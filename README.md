@@ -58,54 +58,6 @@ A utility for managing OpenVPN clients with both CLI and API interfaces, tailore
    sudo systemctl restart openvpn-server@server.service
    ```
 
-## Automatic Startup with Cron
-
-The project includes a convenient script for setting up automatic startup of the API server using cron scheduler.
-
-### Setup automatic startup
-
-To automatically start the API server on system reboot:
-
-``` bash
-./setup_cron.sh install
-```
-
-### Custom scheduling
-
-You can specify custom cron schedule using environment variables:
-
-``` bash
-# Start daily at 2 AM
-CRON_SCHEDULE='0 2 * * *' ./setup_cron.sh install
-
-# Start every 30 minutes
-CRON_SCHEDULE='*/30 * * * *' ./setup_cron.sh install
-```
-
-### Management commands
-
-``` bash
-# Remove from cron
-./setup_cron.sh remove
-
-# Check current cron jobs
-./setup_cron.sh status
-
-# Test the setup
-./setup_cron.sh test
-
-# Show help
-./setup_cron.sh help
-```
-
-### Features
-
-- **Smart dependency checking** - Verifies Python and project files
-- **Virtual environment support** - Automatically activates venv or .venv if present
-- **Logging** - All output is logged to `cron_server.log`
-- **Safe installation** - Prevents duplicate entries and handles cleanup
-- **Flexible scheduling** - Supports any valid cron expression
-
 ## CLI Usage
 
 ### Generate a client configuration
